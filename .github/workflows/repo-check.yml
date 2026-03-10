@@ -1,0 +1,25 @@
+name: Repository Check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  verify-files:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify required files
+        run: |
+          test -f README.md
+          test -f report.md
+          test -f flowgraphs/Variant_B_Delay.grc
+          test -f flowgraphs/Variant_B_Hamming.grc
+
+      - name: Show tracked files
+        run: git ls-files

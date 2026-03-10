@@ -1,0 +1,278 @@
+options:
+  parameters:
+    author: ''
+    catch_exceptions: 'True'
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: qt_gui
+    hier_block_src_path: '.:'
+    id: delay_task
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: prompt
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: Variant B Delay
+    window_size: (1000,1000)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 8]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: delay
+  id: variable_qtgui_range
+  parameters:
+    comment: ''
+    gui_hint: ''
+    label: 'Manual Delay '
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '0'
+    step: '1'
+    stop: '100'
+    value: '0'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [256, 8.0]
+    rotation: 0
+    state: enabled
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: '320000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [160, 8.0]
+    rotation: 0
+    state: enabled
+- name: analog_random_source_x_0
+  id: analog_random_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    max: '2'
+    maxoutbuf: '0'
+    min: '0'
+    minoutbuf: '0'
+    num_samps: '1000'
+    repeat: 'True'
+    type: byte
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [24, 152.0]
+    rotation: 0
+    state: enabled
+- name: blocks_delay_0
+  id: blocks_delay
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: System induced delay
+    delay: delay
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_ports: '1'
+    showports: 'False'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [216, 176.0]
+    rotation: 0
+    state: enabled
+- name: blocks_delay_1
+  id: blocks_delay
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Manual delay compensation
+    delay: '0'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_ports: '1'
+    showports: 'True'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [216, 264.0]
+    rotation: 0
+    state: enabled
+- name: blocks_sub_xx_0
+  id: epy_block
+  parameters:
+    _source_code: "\"\"\"\nEmbedded Python Blocks:\n\nAuto-generated placeholder replaced with an automatic delay estimator.\n\"\"\"\n\nimport numpy as np\nfrom collections import deque\nfrom gnuradio import gr\n\n\nclass blk(gr.sync_block):\n    \"\"\"Estimate a fixed integer delay and output the aligned stream difference.\"\"\"\n\n    def __init__(self, max_delay=100, training_len=256):\n        gr.sync_block.__init__(\n            self,\n            name='Auto Delay Compensation',\n            in_sig=[np.int8, np.int8],\n            out_sig=[np.float32],\n        )\n        self.max_delay = int(max_delay)\n        self.training_len = int(training_len)\n        self._delayed_training = []\n        self._direct_training = []\n        self._history = deque(maxlen=self.max_delay + 1)\n        self._locked = False\n        self._delay = 0\n\n    def _try_lock(self):\n        if self._locked:\n            return\n        needed = self.training_len + self.max_delay\n        if len(self._delayed_training) < needed or len(self._direct_training) < needed:\n            return\n\n        delayed = np.asarray(self._delayed_training, dtype=np.int8)\n        direct = np.asarray(self._direct_training, dtype=np.int8)\n        window = min(self.training_len, len(direct), len(delayed) - self.max_delay)\n        if window <= 0:\n            return\n\n        best_delay = 0\n        best_score = -1\n        for candidate in range(self.max_delay + 1):\n            score = int(np.count_nonzero(delayed[candidate:candidate + window] == direct[:window]))\n            if score > best_score:\n                best_score = score\n                best_delay = candidate\n\n        self._delay = best_delay\n        self._history = deque(direct[-(self._delay + 1):], maxlen=self._delay + 1)\n        self._delayed_training = []\n        self._direct_training = []\n        self._locked = True\n\n    def work(self, input_items, output_items):\n        delayed = input_items[0]\n        direct = input_items[1]\n        out = output_items[0]\n\n        if not self._locked:\n            self._delayed_training.extend(int(x) for x in delayed.tolist())\n            self._direct_training.extend(int(x) for x in direct.tolist())\n            max_cache = self.training_len + self.max_delay + 32\n            if len(self._delayed_training) > max_cache:\n                self._delayed_training = self._delayed_training[-max_cache:]\n                self._direct_training = self._direct_training[-max_cache:]\n            self._try_lock()\n            out[:] = 0.0\n            return len(out)\n\n        for index, sample in enumerate(direct):\n            self._history.append(int(sample))\n            if len(self._history) < self._delay + 1:\n                out[index] = 0.0\n            else:\n                out[index] = float(int(delayed[index]) - int(self._history[0]))\n        return len(out)\n"
+    affinity: ''
+    alias: ''
+    comment: Automatically estimates the system delay and subtracts aligned streams.
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    max_delay: '100'
+    showports: 'False'
+    training_len: '256'
+  states:
+    _io_cache: ('Auto Delay Compensation', 'blk', [('max_delay', '100'), ('training_len', '256')], [('0', 'byte', 1), ('1', 'byte', 1)], [('0', 'float', 1)], 'Estimate a fixed integer delay and output the aligned stream difference.', ['max_delay', 'training_len'])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [576, 216.0]
+    rotation: 0
+    state: enabled
+- name: blocks_throttle2_0
+  id: blocks_throttle2
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    ignoretag: 'True'
+    limit: auto
+    maximum: '0.1'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samples_per_second: samp_rate
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [664, 216.0]
+    rotation: 0
+    state: enabled
+- name: qtgui_time_sink_x_0
+  id: qtgui_time_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    axislabels: 'False'
+    color1: blue
+    color10: dark blue
+    color2: red
+    color3: green
+    color4: black
+    color5: cyan
+    color6: magenta
+    color7: yellow
+    color8: dark red
+    color9: dark green
+    comment: Comparison of streams
+    ctrlpanel: 'False'
+    entags: 'True'
+    grid: 'False'
+    gui_hint: ''
+    label1: Signal 1
+    label10: Signal 10
+    label2: Signal 2
+    label3: Signal 3
+    label4: Signal 4
+    label5: Signal 5
+    label6: Signal 6
+    label7: Signal 7
+    label8: Signal 8
+    label9: Signal 9
+    legend: 'False'
+    marker1: '-1'
+    marker10: '-1'
+    marker2: '-1'
+    marker3: '-1'
+    marker4: '-1'
+    marker5: '-1'
+    marker6: '-1'
+    marker7: '-1'
+    marker8: '-1'
+    marker9: '-1'
+    name: '"Compensated Delay"'
+    nconnections: '1'
+    size: '20'
+    srate: samp_rate
+    stemplot: 'False'
+    style1: '1'
+    style10: '1'
+    style2: '1'
+    style3: '1'
+    style4: '1'
+    style5: '1'
+    style6: '1'
+    style7: '1'
+    style8: '1'
+    style9: '1'
+    tr_chan: '0'
+    tr_delay: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_slope: qtgui.TRIG_SLOPE_POS
+    tr_tag: '""'
+    type: float
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    ylabel: Amplitude
+    ymax: '1'
+    ymin: '-1'
+    yunit: '""'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [808, 200.0]
+    rotation: 0
+    state: enabled
+
+connections:
+- [analog_random_source_x_0, '0', blocks_delay_0, '0']
+- [analog_random_source_x_0, '0', blocks_delay_1, '0']
+- [blocks_delay_0, '0', blocks_sub_xx_0, '0']
+- [blocks_delay_1, '0', blocks_sub_xx_0, '1']
+- [blocks_sub_xx_0, '0', blocks_throttle2_0, '0']
+- [blocks_throttle2_0, '0', qtgui_time_sink_x_0, '0']
+
+metadata:
+  file_format: 1
+  grc_version: 3.10.12.0
