@@ -1,17 +1,9 @@
-"""
-Embedded Python Blocks:
-
-Auto-generated placeholder replaced with an automatic delay estimator.
-"""
-
 import numpy as np
 from collections import deque
 from gnuradio import gr
 
 
 class blk(gr.sync_block):
-    """Estimate a fixed integer delay and output the aligned stream difference."""
-
     def __init__(self, max_delay=100, training_len=256):
         gr.sync_block.__init__(
             self,

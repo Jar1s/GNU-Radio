@@ -1,14 +1,8 @@
-"""
-Embedded Python block implementing a streaming Hamming (7,4) encoder.
-"""
-
 import numpy as np
 from gnuradio import gr
 
 
 class blk(gr.basic_block):
-    """Encode unpacked input bits using Hamming (7,4)."""
-
     def __init__(self):
         gr.basic_block.__init__(
             self,
