@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+flowgraphs/*.py
+flowgraphs/variant_b_error_rate.py
+flowgraphs/variant_b_error_rate_epy_block_*.py
+*.grc.xml
+*.bak

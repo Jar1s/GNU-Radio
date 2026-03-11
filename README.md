@@ -1,79 +1,116 @@
 # GNU Radio Variant B-3
 
-This repository implements the easiest two required tasks from the assignment:
+This repository contains a solution for 2 required tasks from the assignment:
 
 - `B` Automatic delay control
 - `C` Hamming `(7,4)` encoder/decoder
 
-The provided flowgraphs are stored in [`flowgraphs`](./flowgraphs).
+The source of truth is the `.grc` flowgraphs in [`flowgraphs`](./flowgraphs).  
+GNU Radio may generate helper Python files locally when the flowgraphs are opened or run, but those generated files are not required in version control.
 
-## Environment
+## Repository Contents
 
-Recommended installation is Radioconda:
+Files that should stay in the submitted repository:
+
+- `flowgraphs/Variant_B_Delay.grc`
+- `flowgraphs/Variant_B_Hamming.grc`
+- `flowgraphs/Variant_B_Error_Rate.grc`
+- `README.md`
+- `report.md`
+- optional: `GNU_Radio_Report.docx`
+
+Files that should not be relied on for submission:
+
+- generated Python helpers such as `flowgraphs/*.py`
+- cache files such as `__pycache__/`
+- temporary editor files and backups
+
+## GNU Radio Version
+
+Recommended target:
+
+- GNU Radio `3.10.x`
+
+The flowgraphs were prepared for GNU Radio `3.10.12.0`.  
+For best reproducibility, use the same major/minor release.
+
+## Installation
+
+### Option A: Radioconda
+
+Radioconda is the simplest choice for a clean GNU Radio installation.
+
+Reference:
+
+- <https://github.com/radioconda/radioconda-installer>
+- <https://github.com/ryanvolz/radioconda/releases/>
+
+After installation, start GNU Radio Companion with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ryanvolz/radioconda-installer/main/install-radioconda.sh | bash
-source "$HOME/radioconda/etc/profile.d/conda.sh"
-conda activate base
-conda install gnuradio
+source "$HOME/radioconda/bin/activate"
 gnuradio-companion
 ```
 
-The assignment PDF recommends the Radioconda installer:
-https://github.com/radioconda/radioconda-installer
+### Option B: Existing GNU Radio installation
 
-## What Was Implemented
+If GNU Radio `3.10.x` is already installed and GNU Radio Companion can open `.grc` files with Embedded Python Blocks, the repository should run without extra dependencies.
 
-### Task B
+## Cross-Platform Notes
 
-[`flowgraphs/Variant_B_Delay.grc`](./flowgraphs/Variant_B_Delay.grc) now contains an Embedded Python Block called `Auto Delay Compensation`.
+The custom logic is implemented in Embedded Python Blocks and does not use hardcoded machine-specific paths.
 
-It:
-- observes the delayed stream and the direct stream,
-- estimates a fixed integer delay from the training samples,
-- aligns the direct stream internally,
-- outputs the compensated difference.
+Practical expectation:
 
-Expected result:
-- set `Manual Delay` to a non-zero value,
-- run the flowgraph,
-- after the initial training period the output should settle close to zero.
+- macOS: expected to work with GNU Radio `3.10.x`
+- Linux: expected to work with GNU Radio `3.10.x`
+- Windows: should work if GNU Radio Companion and Embedded Python Blocks are available, but this was not tested directly
 
-### Task C
-
-[`flowgraphs/Variant_B_Hamming.grc`](./flowgraphs/Variant_B_Hamming.grc) now replaces the two placeholder `Copy` blocks with:
-
-- `Hamming (7,4) Encoder`
-- `Hamming (7,4) Decoder`
-
-Both blocks operate on unpacked bit streams:
-- encoder maps every 4 data bits to 7 coded bits,
-- decoder corrects a single-bit error in each 7-bit codeword and restores the original 4 data bits.
-
-Expected result:
-- run the flowgraph,
-- compare the BER indicators,
-- the Hamming branch should show fewer errors than the uncoded branch.
+If the flowgraph is opened on another machine, GNU Radio may regenerate local helper `.py` files automatically. This is normal.
 
 ## How To Run
 
-1. Open `gnuradio-companion`.
-2. Open [`flowgraphs/Variant_B_Delay.grc`](./flowgraphs/Variant_B_Delay.grc) and run it.
-3. Open [`flowgraphs/Variant_B_Hamming.grc`](./flowgraphs/Variant_B_Hamming.grc) and run it.
+### Task B
 
-GNU Radio generates embedded Python helper files automatically when saving or running the flowgraph.
+1. Open [`flowgraphs/Variant_B_Delay.grc`](./flowgraphs/Variant_B_Delay.grc).
+2. Run the flowgraph.
+3. Set `Manual Delay` to a non-zero value, for example `19`.
+4. Observe the `Compensated Delay` plot.
 
-## Verification Checklist
+Expected result:
 
-- `Variant_B_Delay.grc`
-  - set non-zero system delay,
-  - run the flowgraph,
-  - confirm that the compensated output approaches zero.
+- after the initial estimation phase, the output should stay close to zero
 
-- `Variant_B_Hamming.grc`
-  - run the flowgraph with the provided settings,
-  - confirm that the Hamming-coded branch reports lower BER than the uncoded branch.
+### Task C
 
-## Current Limitation
+1. Open [`flowgraphs/Variant_B_Hamming.grc`](./flowgraphs/Variant_B_Hamming.grc).
+2. Run the flowgraph.
+3. Compare the BER outputs of both branches.
 
-Runtime verification was not completed in this repository because GNU Radio is not installed in the current environment.
+Expected result:
+
+- the Hamming-coded branch should perform better than the uncoded branch
+
+## Verification
+
+Task `B` is correct if:
+
+- the delay is non-zero
+- the compensation still drives the difference close to zero
+
+Task `C` is correct if:
+
+- the flowgraph runs without block errors
+- the BER result of the coded branch is better than the uncoded branch
+
+## Reproducibility
+
+To make the project reproducible on another machine:
+
+1. clone the repository
+2. install GNU Radio `3.10.x`
+3. open the `.grc` flowgraphs directly
+4. let GNU Radio regenerate any local helper files if needed
+5. run the flowgraphs with the provided settings
+
+The important part to preserve is the `.grc` source, not the generated Python helper files.
