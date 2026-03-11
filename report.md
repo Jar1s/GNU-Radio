@@ -70,6 +70,7 @@ class blk(gr.sync_block):
         self._delay = 0
 
     def _try_lock(self):
+        # Wait until enough training data is collected from both branches.
         needed = self.training_len + self.max_delay
         if len(self._delayed_training) < needed or len(self._direct_training) < needed:
             return
@@ -80,6 +81,7 @@ class blk(gr.sync_block):
         best_score = -1
 
         for candidate in range(self.max_delay + 1):
+            # Compare each possible shift and keep the one with the best match.
             score = int(np.count_nonzero(
                 delayed[candidate:candidate + self.training_len] == direct[:self.training_len]
             ))
@@ -88,6 +90,7 @@ class blk(gr.sync_block):
                 best_delay = candidate
 
         self._delay = best_delay
+        # Keep only the amount of history needed for aligned subtraction.
         self._history = deque(direct[-(self._delay + 1):], maxlen=self._delay + 1)
         self._locked = True
 ```
@@ -144,10 +147,13 @@ class blk(gr.basic_block):
         out_index = 0
 
         for _ in range(blocks):
+            # Read 4 information bits.
             d1, d2, d3, d4 = [self._buffer.pop(0) for _ in range(4)]
+            # Compute the three Hamming parity bits.
             p1 = d1 ^ d2 ^ d4
             p2 = d1 ^ d3 ^ d4
             p3 = d2 ^ d3 ^ d4
+            # Output layout: parity and data bits in Hamming (7,4) order.
             codeword = (p1, p2, d1, p3, d2, d3, d4)
             for bit in codeword:
                 out[out_index] = bit
@@ -191,12 +197,15 @@ class blk(gr.basic_block):
 
         for _ in range(blocks):
             codeword = [self._buffer.pop(0) for _ in range(7)]
+            # Compute syndrome bits for single-error detection.
             s1 = codeword[0] ^ codeword[2] ^ codeword[4] ^ codeword[6]
             s2 = codeword[1] ^ codeword[2] ^ codeword[5] ^ codeword[6]
             s3 = codeword[3] ^ codeword[4] ^ codeword[5] ^ codeword[6]
             error_position = s1 + (s2 << 1) + (s3 << 2)
             if 1 <= error_position <= 7:
+                # Correct the detected bit error.
                 codeword[error_position - 1] ^= 1
+            # Extract only the original data bits.
             for bit in (codeword[2], codeword[4], codeword[5], codeword[6]):
                 out[out_index] = bit
                 out_index += 1
@@ -285,7 +294,7 @@ Screenshot to insert:
 - The assignment was implemented using Embedded Python Blocks, which is explicitly allowed in the task description.
 - The original verification settings of the flowgraphs were preserved as much as possible.
 - Only the required implementation points for tasks `B` and `C` were changed.
-- The repository also contains GNU Radio generated helper Python files for reproducibility.
+- The repository keeps the `.grc` flowgraphs as the source of truth; generated runtime helper files are not required for submission.
 
 ## 8. Conclusion
 
@@ -294,4 +303,4 @@ Both selected tasks were implemented successfully:
 - Task `B` automatically estimates and compensates stream delay.
 - Task `C` implements Hamming `(7,4)` coding and improves BER compared to the uncoded branch.
 
-The repository contains the flowgraphs, generated helper files, and the instructions needed to reproduce the solution on another machine.
+The repository contains the final flowgraphs, documentation, and usage instructions needed to reproduce the solution on another machine with GNU Radio 3.10.
