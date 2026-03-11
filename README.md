@@ -1,6 +1,6 @@
 # GNU Radio Variant B-3
 
-This repository contains a solution for 2 required tasks from the assignment:
+This repository contains a solution for 2 selected tasks from the assignment:
 
 - `B` Automatic delay control
 - `C` Hamming `(7,4)` encoder/decoder
@@ -10,16 +10,16 @@ GNU Radio may generate helper Python files locally when the flowgraphs are opene
 
 ## Repository Contents
 
-Files that should stay in the submitted repository:
+Files included in this repository:
 
 - `flowgraphs/Variant_B_Delay.grc`
 - `flowgraphs/Variant_B_Hamming.grc`
 - `flowgraphs/Variant_B_Error_Rate.grc`
 - `README.md`
-- `report.md`
-- optional: `GNU_Radio_Report.docx`
 
-Files that should not be relied on for submission:
+The final report is intentionally not stored in this repository and is submitted separately as a Word/PDF document.
+
+Files that should not be relied on in version control:
 
 - generated Python helpers such as `flowgraphs/*.py`
 - cache files such as `__pycache__/`
@@ -90,6 +90,17 @@ Expected result:
 Expected result:
 
 - the Hamming-coded branch should perform better than the uncoded branch
+
+## Report
+
+According to the assignment, the report should contain:
+
+- description of the solution
+- source code with commentary
+- guide for downloading and using the implemented blocks
+- any additional relevant observations
+
+This repository contains only the implementation and usage notes. The final report is prepared separately for submission.
 
 ## Verification
 
