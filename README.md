@@ -76,10 +76,12 @@ If the flowgraph is opened on another machine, GNU Radio may regenerate local he
 2. Run the flowgraph.
 3. Set `Manual Delay` to a non-zero value, for example `19`.
 4. Observe the `Compensated Delay` plot.
+5. If the manual delay is changed while running, press `Re-run Auto Delay` to force a new delay search.
 
 Expected result:
 
 - after the initial estimation phase, the output should stay close to zero
+- after pressing `Re-run Auto Delay`, the block should converge again for the new delay
 
 ### Task C
 
