@@ -333,7 +333,7 @@ blocks:
 - name: blocks_copy_0
   id: epy_block
   parameters:
-    _source_code: "import numpy as np\nfrom gnuradio import gr\n\n\nclass blk(gr.basic_block):\n    def __init__(self):\n        gr.basic_block.__init__(\n            self,\n            name='Hamming (7,4) Encoder',\n            in_sig=[np.int8],\n            out_sig=[np.int8],\n        )\n        self._buffer = []\n\n    def general_work(self, input_items, output_items):\n        incoming = input_items[0]\n        buffer = self._buffer\n        buffer.extend((int(x) & 1) for x in incoming)\n        self.consume_each(len(incoming))\n\n        out = output_items[0]\n        blocks = min(len(buffer) // 4, len(out) // 7)\n        out_index = 0\n        pop = buffer.pop\n\n        for _ in range(blocks):\n            d1 = pop(0)\n            d2 = pop(0)\n            d3 = pop(0)\n            d4 = pop(0)\n            p1 = d1 ^ d2 ^ d4\n            p2 = d1 ^ d3 ^ d4\n            p3 = d2 ^ d3 ^ d4\n            out[out_index:out_index + 7] = (p1, p2, d1, p3, d2, d3, d4)\n            out_index += 7\n\n        return out_index\n"
+    _source_code: "import numpy as np\nfrom gnuradio import gr\n\n\nclass blk(gr.sync_block):\n    def __init__(self):\n        gr.sync_block.__init__(\n            self,\n            name='Hamming (7,4) Encoder',\n            in_sig=[(np.int8, 4)],\n            out_sig=[(np.int8, 7)],\n        )\n        table = np.empty((16, 7), dtype=np.int8)\n        for nibble in range(16):\n            d1 = (nibble >> 3) & 1\n            d2 = (nibble >> 2) & 1\n            d3 = (nibble >> 1) & 1\n            d4 = nibble & 1\n            p1 = d1 ^ d2 ^ d4\n            p2 = d1 ^ d3 ^ d4\n            p3 = d2 ^ d3 ^ d4\n            table[nibble] = (p1, p2, d1, p3, d2, d3, d4)\n        self._table = table\n\n    def work(self, input_items, output_items):\n        inp = input_items[0].astype(np.uint8, copy=False)\n        out = output_items[0]\n        idx = ((inp[:, 0] << 3) | (inp[:, 1] << 2) | (inp[:, 2] << 1) | inp[:, 3]).astype(np.intp, copy=False)\n        out[:len(inp)] = self._table[idx]\n        return len(inp)\n"
     affinity: ''
     alias: ''
     comment: ''
@@ -342,7 +342,7 @@ blocks:
     minoutbuf: '0'
     showports: 'False'
   states:
-    _io_cache: ('Hamming (7,4) Encoder', 'blk', [], [('0', 'byte', 1)], [('0', 'byte', 1)], '', [])
+    _io_cache: ('Hamming (7,4) Encoder', 'blk', [], [('0', 'byte', 4)], [('0', 'byte', 7)], '', [])
     bus_sink: false
     bus_source: false
     bus_structure: null
@@ -352,7 +352,7 @@ blocks:
 - name: blocks_copy_0_0
   id: epy_block
   parameters:
-    _source_code: "import numpy as np\nfrom gnuradio import gr\n\n\nclass blk(gr.basic_block):\n    def __init__(self):\n        gr.basic_block.__init__(\n            self,\n            name='Hamming (7,4) Decoder',\n            in_sig=[np.int8],\n            out_sig=[np.int8],\n        )\n        self._buffer = []\n\n    def general_work(self, input_items, output_items):\n        incoming = input_items[0]\n        buffer = self._buffer\n        buffer.extend((int(x) & 1) for x in incoming)\n        self.consume_each(len(incoming))\n\n        out = output_items[0]\n        blocks = min(len(buffer) // 7, len(out) // 4)\n        out_index = 0\n        pop = buffer.pop\n\n        for _ in range(blocks):\n            codeword = [pop(0) for _ in range(7)]\n            s1 = codeword[0] ^ codeword[2] ^ codeword[4] ^ codeword[6]\n            s2 = codeword[1] ^ codeword[2] ^ codeword[5] ^ codeword[6]\n            s3 = codeword[3] ^ codeword[4] ^ codeword[5] ^ codeword[6]\n            error_position = s1 + (s2 << 1) + (s3 << 2)\n            if 1 <= error_position <= 7:\n                codeword[error_position - 1] ^= 1\n            out[out_index:out_index + 4] = (codeword[2], codeword[4], codeword[5], codeword[6])\n            out_index += 4\n\n        return out_index\n"
+    _source_code: "import numpy as np\nfrom gnuradio import gr\n\n\nclass blk(gr.sync_block):\n    def __init__(self):\n        gr.sync_block.__init__(\n            self,\n            name='Hamming (7,4) Decoder',\n            in_sig=[(np.int8, 7)],\n            out_sig=[(np.int8, 4)],\n        )\n        table = np.empty((128, 4), dtype=np.int8)\n        for word in range(128):\n            codeword = [((word >> shift) & 1) for shift in range(6, -1, -1)]\n            s1 = codeword[0] ^ codeword[2] ^ codeword[4] ^ codeword[6]\n            s2 = codeword[1] ^ codeword[2] ^ codeword[5] ^ codeword[6]\n            s3 = codeword[3] ^ codeword[4] ^ codeword[5] ^ codeword[6]\n            error_position = s1 + (s2 << 1) + (s3 << 2)\n            if 1 <= error_position <= 7:\n                codeword[error_position - 1] ^= 1\n            table[word] = (codeword[2], codeword[4], codeword[5], codeword[6])\n        self._table = table\n\n    def work(self, input_items, output_items):\n        inp = input_items[0].astype(np.uint8, copy=False)\n        out = output_items[0]\n        idx = ((inp[:, 0] << 6) | (inp[:, 1] << 5) | (inp[:, 2] << 4) | (inp[:, 3] << 3) | (inp[:, 4] << 2) | (inp[:, 5] << 1) | inp[:, 6]).astype(np.intp, copy=False)\n        out[:len(inp)] = self._table[idx]\n        return len(inp)\n"
     affinity: ''
     alias: ''
     comment: ''
@@ -361,7 +361,7 @@ blocks:
     minoutbuf: '0'
     showports: 'False'
   states:
-    _io_cache: ('Hamming (7,4) Decoder', 'blk', [], [('0', 'byte', 1)], [('0', 'byte', 1)], '', [])
+    _io_cache: ('Hamming (7,4) Decoder', 'blk', [], [('0', 'byte', 7)], [('0', 'byte', 4)], '', [])
     bus_sink: false
     bus_source: false
     bus_structure: null
@@ -446,6 +446,78 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [1256, 480.0]
+    rotation: 0
+    state: enabled
+- name: blocks_stream_to_vector_0
+  id: blocks_stream_to_vector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: '4'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [448, 272.0]
+    rotation: 0
+    state: enabled
+- name: blocks_vector_to_stream_0
+  id: blocks_vector_to_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: '7'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [848, 272.0]
+    rotation: 0
+    state: enabled
+- name: blocks_stream_to_vector_0_0
+  id: blocks_stream_to_vector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: '7'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [560, 480.0]
+    rotation: 0
+    state: enabled
+- name: blocks_vector_to_stream_0_0
+  id: blocks_vector_to_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: '4'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [960, 480.0]
     rotation: 0
     state: enabled
 - name: blocks_sub_xx_0
@@ -1428,11 +1500,15 @@ connections:
 - [blocks_char_to_float_0_0_1, '0', blocks_sub_xx_0, '0']
 - [blocks_char_to_float_0_0_1_0, '0', blocks_sub_xx_0_0, '0']
 - [blocks_char_to_float_0_0_1_1, '0', qtgui_time_sink_x_0, '2']
-- [blocks_copy_0, '0', blocks_repack_bits_bb_0, '0']
-- [blocks_copy_0_0, '0', blocks_repack_bits_bb_0_1, '0']
+- [blocks_copy_0, '0', blocks_vector_to_stream_0, '0']
+- [blocks_copy_0_0, '0', blocks_vector_to_stream_0_0, '0']
 - [blocks_repack_bits_bb_0, '0', digital_constellation_encoder_bc_0, '0']
-- [blocks_repack_bits_bb_0_0, '0', blocks_copy_0, '0']
-- [blocks_repack_bits_bb_0_0_0, '0', blocks_copy_0_0, '0']
+- [blocks_repack_bits_bb_0_0, '0', blocks_stream_to_vector_0, '0']
+- [blocks_repack_bits_bb_0_0_0, '0', blocks_stream_to_vector_0_0, '0']
+- [blocks_stream_to_vector_0, '0', blocks_copy_0, '0']
+- [blocks_stream_to_vector_0_0, '0', blocks_copy_0_0, '0']
+- [blocks_vector_to_stream_0, '0', blocks_repack_bits_bb_0, '0']
+- [blocks_vector_to_stream_0_0, '0', blocks_repack_bits_bb_0_1, '0']
 - [blocks_repack_bits_bb_0_1, '0', virtual_sink_1, '0']
 - [blocks_sub_xx_0, '0', blocks_abs_xx_0, '0']
 - [blocks_sub_xx_0_0, '0', blocks_abs_xx_0_0, '0']
